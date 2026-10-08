@@ -86,6 +86,9 @@ Ask the user for a folder name. Default to `powerapps-{app-name-slugified}-{time
 npx degit microsoft/PowerAppsCodeApps/templates/vite {folder} --force
 cd {folder}
 npm install
+# The template does not depend on the Power Apps CLI directly, and recent
+# @microsoft/power-apps releases no longer pull it in. If no shim exists, install it locally.
+[ -e node_modules/.bin/pa ] || [ -e node_modules/.bin/pa.cmd ] || [ -e node_modules/.bin/power-apps ] || [ -e node_modules/.bin/power-apps.cmd ] || npm install --save-dev @microsoft/power-apps-cli
 ```
 
 **Notes:**
@@ -94,7 +97,7 @@ npm install
 - If targeting an existing directory, use `.` as the folder name: `npx degit microsoft/PowerAppsCodeApps/templates/vite . --force`
 - If `npx degit` fails (network issues, npm not found), retry once, then ask the user to run manually
 
-Verify: `package.json` exists, `node_modules/` created.
+Verify: `package.json` exists, `node_modules/` created, and the Power Apps CLI resolves per [cli-binary.md](${PLUGIN_ROOT}/shared/cli-binary.md) (`PA_KIND` is not `none`).
 
 ### Step 5: Initialize
 
@@ -251,6 +254,7 @@ node --version   # → v22.4.0
 npx degit microsoft/PowerAppsCodeApps/templates/vite powerapps-task-tracker-20260302 --force
 cd powerapps-task-tracker-20260302
 npm install
+npm install --save-dev @microsoft/power-apps-cli   # only if no node_modules/.bin/pa shim exists
 
 # Step 5: Initialize (browser login prompt on first run; CLI prompts for env ID if -e omitted)
 pa app init -n 'Task Tracker' -e <environment-id>

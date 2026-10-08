@@ -42,7 +42,9 @@ elif [ -e node_modules/.bin/power-apps ] || [ -e node_modules/.bin/power-apps.cm
   PA_KIND="power-apps"
 else
   # Neither shim present → the CLI is not installed yet.
-  # Run `npm install` in the project root (per the normal scaffold flow), then re-probe.
+  # Run `npm install` in the project root, then re-probe. If it is STILL missing,
+  # the template no longer pulls the CLI in transitively — install it explicitly
+  # (rule 4 below), then re-probe.
   PA=""
   PA_KIND="none"
 fi
@@ -53,7 +55,13 @@ Rules:
 1. **Probe by file presence only** — do not pin or parse a version. A shim (`.bin/pa` or, on Windows, `.bin/pa.cmd`) existing == the grouped binary is available. This is deterministic and cheaper than spawning `--version`. Always check the `.cmd` variant too: npm/pnpm/yarn/bun create `pa.cmd`/`power-apps.cmd` on Windows and an extensionless-only probe would misclassify a valid install as `none`.
 2. **Always use `npx --no-install`.** Never run a bare `npx pa ...`: if the local shim is missing, npx would try to download and execute an unrelated remote package named `pa`. `--no-install` fails closed instead.
 3. **Cache the result** in the project memory bank (`CLI Binary` row — see `memory-bank.md`) so subsequent skills/commands in the session don't re-probe. Re-probe only after an `npm install` that could have changed the installed CLI.
-4. **`none` → install first.** If neither shim exists, the CLI isn't installed; run the project's `npm install` (already part of the scaffold flow) and re-probe before running any command.
+4. **`none` → install first.** If neither shim exists, the CLI isn't installed. Run the project's `npm install` and re-probe. The template does **not** list `@microsoft/power-apps-cli` itself — it used to arrive transitively through `@microsoft/power-apps`, but `@microsoft/power-apps` 1.2.12 and later no longer depend on it, so a fresh `npm install` can leave no `pa`/`power-apps` shim. If the probe is still `none` after `npm install`, install the CLI as a project dev dependency and re-probe:
+
+   ```bash
+   npm install --save-dev @microsoft/power-apps-cli
+   ```
+
+   This is a local, project-scoped install (no `-g`), so it needs no extra confirmation. If the probe is still `none` afterwards, STOP and report the `npm` error to the user.
 
 ---
 

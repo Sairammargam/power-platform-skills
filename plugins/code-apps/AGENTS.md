@@ -97,7 +97,7 @@ Always use generated services for data access.
 
 ### CLI
 
-The Power Apps CLI (`@microsoft/power-apps-cli`) is installed locally via `npm install` as part of the app template. It ships two binaries — grouped **`pa`** (preferred) and flat **`power-apps`** (fallback). **Resolve which one the project has via [shared/cli-binary.md](./shared/cli-binary.md) first**, then invoke it with `npx --no-install <pa|power-apps>` from the project directory — runs natively in bash on all platforms, no PowerShell wrapper needed. Commands below use the canonical grouped `pa` form:
+The Power Apps CLI (`@microsoft/power-apps-cli`) is installed locally in the project (via `npm install` on the app template, or `npm install --save-dev @microsoft/power-apps-cli` when the template leaves no shim — see cli-binary.md). It ships two binaries — grouped **`pa`** (preferred) and flat **`power-apps`** (fallback). **Resolve which one the project has via [shared/cli-binary.md](./shared/cli-binary.md) first**, then invoke it with `npx --no-install <pa|power-apps>` from the project directory — runs natively in bash on all platforms, no PowerShell wrapper needed. Commands below use the canonical grouped `pa` form:
 
 ```bash
 pa app push                   # Deploy app

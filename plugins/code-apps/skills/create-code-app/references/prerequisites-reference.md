@@ -7,7 +7,7 @@
 | Node.js        | **v22+**        | `node --version` | https://nodejs.org/    |
 | Git (optional) | Any             | `git --version`  | https://git-scm.com/  |
 
-The Power Apps CLI (`@microsoft/power-apps-cli`) is installed automatically as part of `npm install` when the project is scaffolded from the template. No separate CLI install is required.
+The Power Apps CLI (`@microsoft/power-apps-cli`) is installed locally in the project — no global install is required. The template does not list it directly and recent `@microsoft/power-apps` releases no longer pull it in, so after `npm install` the scaffold flow checks for the `pa` shim and, if it is missing, runs `npm install --save-dev @microsoft/power-apps-cli` (see [cli-binary.md](../../../shared/cli-binary.md)).
 
 ## Required Account
 

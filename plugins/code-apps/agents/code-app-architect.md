@@ -43,7 +43,7 @@ node --version   # Must be v22+
 - **Node.js below v22**: Report "Node.js 22+ is required. Upgrade or switch with `nvm use 22`." and STOP.
 - **All present**: Report versions and proceed.
 
-The Power Apps CLI is installed automatically via `npm install` from the app template — no separate install required.
+The Power Apps CLI is installed locally in the project (never globally). If `npm install` on the app template leaves no `pa`/`power-apps` shim, run `npm install --save-dev @microsoft/power-apps-cli` — see [cli-binary.md](../shared/cli-binary.md).
 
 ## Key Considerations for Power Apps Code Apps
 
@@ -114,7 +114,7 @@ Check `power.config.json` in the project root for an `environmentId` — use it 
 
 ### CLI Commands
 
-The Power Apps CLI (`@microsoft/power-apps-cli`) installs locally via `npm install`. It ships two binaries — grouped **`pa`** (preferred) and flat **`power-apps`** (fallback). **Resolve which one the project has via [cli-binary.md](../shared/cli-binary.md) before running any command**, then invoke it with `npx --no-install <pa|power-apps>` from the project directory (works natively in bash on all platforms). Commands below are shown in the canonical grouped `pa` form:
+The Power Apps CLI (`@microsoft/power-apps-cli`) installs locally (`npm install`, plus `npm install --save-dev @microsoft/power-apps-cli` if the template leaves no shim). It ships two binaries — grouped **`pa`** (preferred) and flat **`power-apps`** (fallback). **Resolve which one the project has via [cli-binary.md](../shared/cli-binary.md) before running any command**, then invoke it with `npx --no-install <pa|power-apps>` from the project directory (works natively in bash on all platforms). Commands below are shown in the canonical grouped `pa` form:
 
 ```bash
 pa app push                               # Deploy
