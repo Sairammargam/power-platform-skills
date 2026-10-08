@@ -226,6 +226,24 @@ Native modules are allowlist-bound by the current template `package.json`. If th
 
 Runs `pa app add data-source` under the hood, regenerates services, prints how to import in your screens.
 
+### Data-source planning, refresh, and retirement
+
+Use `/setup-datamodel` or `/add-dataverse` to review and approve a data change.
+Add `--plan-only` to preview it without changing the app or its data.
+
+For an existing binding, use the dedicated operation instead of adding it again:
+
+```text
+> /add-dataverse --refresh --data-source-name <registered-name>
+> /add-connector --refresh --data-source-name <registered-name>
+> /add-sharepoint --remove --data-source-name <registered-name>
+```
+
+Refresh updates an existing source without adding it again. Removal stops if
+app code still uses the source and never deletes server tables, records, lists,
+or connections. These commands update the data layer; request screen changes
+separately through `/edit-app`. Cloud-flow integration is not supported.
+
 ### 5. Iterate on the generated app after the fact
 
 ```text
@@ -271,7 +289,7 @@ Example edit flows:
 | `/create-mobile-app` | ✅ v0 | Orchestrator — starts from a fresh installed `expo-app-standalone` template folder, gates planning, runs `pa app init`, resolves the selected environment tenant, discovers tenant-visible app registrations and checks the complete required permission profile, lets the user select or create one (or skip auth), then applies data/native/connectors, builds screens, starts dev server |
 | `/set-app-registration-native` | ✅ v0 | Auth helper — discovers tenant-visible app registrations, checks the applicable native runtime permission profile, opens the environment-specific Wrap page for creation or repair, and writes the selected client ID to `auth.config.json`. |
 | `/add-dataverse` | ✅ v0 | Add Dataverse — connect to existing tables, or create / extend tables in Tier 0 → N order via the Dataverse Web API, then generate TS services. Accepts ER diagrams via image / Mermaid / text, or spawns the data-model-architect agent. |
-| `/setup-datamodel` | ✅ v0 | Discoverable alias for `/add-dataverse` optimized for the design-first entry point ("how do I plan my Dataverse schema?"). Same workflow under a more searchable name. |
+| `/setup-datamodel` | ✅ v0 | Plan and approve a scoped Dataverse/connector change, apply only accepted data operations, refresh retained bindings, or retire app-local bindings after consumer checks. `--plan-only` returns before saving or applying. |
 | `/add-connector` | ✅ v0 | Generic connector — runs `pa app add data-source` for any first-party or custom connector |
 | `/add-native` | ✅ v0 | Add a supported native capability/control (camera, image-picker, barcode/QR scanner, document-picker, PDF viewer/report, pen/signature, secure-store, file-system, sharing, haptics, etc.) — verifies the module already ships in the template and writes typed wrappers under `src/native/` without installing native packages or editing `app.config.js` |
 | `/list-connections` | ✅ v0 | Finds or creates a Power Platform connection ID, or resolves a solution connection reference, for `pa app add data-source`. Use when adding non-Dataverse connectors or re-binding after a 401. |

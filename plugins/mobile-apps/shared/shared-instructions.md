@@ -4,6 +4,54 @@
 
 All skills reference this single file. When new shared instructions are added, update this file only — no changes needed to individual skills.
 
+## Data-source invocation scope
+
+Read this shared file before any workflow commands or app/cloud writes. If it
+cannot be loaded, STOP and report the missing prerequisite; do not proceed from
+a remembered or copied fragment. Before data-source work, bind the invocation through
+[app-working-directory.md](references/app-working-directory.md) before reading
+even the minimal local app markers. A child's launch directory is not its app root.
+
+Resolve the current requested operation before discovery or mutation: schema
+change/new binding, retained-source refresh, retirement, or sample seeding.
+An existing plan or inventory is context, not permission to replay every row.
+Standalone calls keep the data workflow's own approval and validation gates.
+They do not start a full-app integration wizard or automatically edit screens.
+
+For every data child handoff, including routers and retries, pass
+`MOBILE_APP_ORCHESTRATING=1`, the owning `orchestrator`, absolute `working_dir`,
+current `phase`, and exact `approved_scope` with supplied answers. The marker is
+invocation-scoped: do not persist it, rely on a prior shell export, or infer
+approval from a flag alone. Approved children reuse that same current scope and
+return to their owner; expanded or conflicting scope returns `NEEDS_CONTEXT`.
+Older callers without a complete approved handoff must establish current scope
+through the leaf's approval gate rather than silently applying the saved plan.
+
+`--plan-only` or a planning-phase handoff never authorizes mutating leaves,
+connection creation, generated services, seeding, or schema writes.
+Return the proposal before implementation; only a
+workflow's explicit plan-document approval may save planning documents.
+Propagate the mode and current scoped context through routers; missing or
+conflicting context returns `NEEDS_CONTEXT` before mutation.
+
+For proposal-only environment context, read the selected `power.config.json`
+environment ID and reuse matching complete caller context, or run
+`resolve-environment.js <selected-environment-id> --no-cache --require-tenant`
+from the owner's absolute working directory. This mode may read existing
+identity metadata but does not persist environment/auth caches, change telemetry
+routing, or replay pending telemetry. It is not a forced-fresh metadata read.
+Require a matching environment ID, HTTPS URL, and tenant; conflicting or still
+incomplete context returns `NEEDS_CONTEXT` after bounded read-only recovery.
+The ordinary, configuration-persisting resolver remains forbidden before
+implementation approval, including `--plan-only` and planning-phase child
+calls. Do not remove flags or redirect resolver output into app configuration
+to recover a planning failure. Scratch planning artifacts are allowed.
+
+For scoped Dataverse proposals, follow
+[dataverse-change-planning.md](references/dataverse-change-planning.md).
+It reuses creation's compact-evidence helpers without importing the create
+wizard or its approval gates into setup/standalone data planning.
+
 ---
 
 ## Version Check
@@ -27,14 +75,14 @@ summary when a measured run was created:
 
 ```bash
 node "${PLUGIN_ROOT}/scripts/emit-telemetry-checkpoint.js" \
-  --begin "<skill-name>" --project-root "<working_dir>" || true
+  --begin "<skill-name>" --project-root '<working_dir>' || true
 ```
 
 A nested skill uses the supplied run ID and caller span by adding `--run-id`
 and `--parent-span-id`; its returned span is a new skill invocation. Pass both
 IDs as orchestration context when invoking another Skill or Task, not as Power
 Apps CLI flags. Never infer a parent from a process or session ID. On resume,
-use `--resume "<skill-span-id>" --run-id "<run-id>" --project-root "<working_dir>"`
+use `--resume "<skill-span-id>" --run-id "<run-id>" --project-root '<working_dir>'`
 instead of starting a second run, then replace `SKILL_SPAN_ID` with the newly
 returned span ID. Resume is valid only after `needs_context`; it creates a new
 immutable attempt in the same run. Each attempt can have only one retry;
@@ -55,11 +103,11 @@ that same span afterward:
 node "${PLUGIN_ROOT}/scripts/emit-telemetry-checkpoint.js" \
   "<skill-name>|<checkpoint-name>|started" \
   --run-id "$RUN_ID" --parent-span-id "$SKILL_SPAN_ID" \
-  --project-root "<working_dir>" || true
+  --project-root '<working_dir>' || true
 node "${PLUGIN_ROOT}/scripts/emit-telemetry-checkpoint.js" \
   "<skill-name>|<checkpoint-name>|completed" \
   --run-id "$RUN_ID" --span-id "$STEP_SPAN_ID" \
-  --project-root "<working_dir>" || true
+  --project-root '<working_dir>' || true
 ```
 
 For one foreground command, prefer the wrapper so timing and outcome come from
@@ -70,7 +118,7 @@ command string. Use a real executable or `node <script>` on Windows, not a
 ```bash
 bash "${PLUGIN_ROOT}/scripts/run-with-telemetry.sh" \
   --execute "<skill-name>|<checkpoint-name>" --run-id "$RUN_ID" \
-  --parent-span-id "$SKILL_SPAN_ID" --project-root "<working_dir>" \
+  --parent-span-id "$SKILL_SPAN_ID" --project-root '<working_dir>' \
   -- node "<script-path>" "<argument>"
 ```
 
@@ -180,9 +228,18 @@ Note on `az`: on Windows where it is installed as a `.cmd` shim and not on the b
 
 **📋 [connector-reference.md](./connector-reference.md)**
 
-All non-Dataverse connectors require a connection ID or connection reference before `pa app add data-source`. Read this before any `/add-*` connector skill. Always run `/list-connections` first to create a supported connection, reuse a caller-provided connection ID, or resolve a solution connection reference.
+All non-Dataverse connectors require a connection ID or connection reference
+before `pa app add data-source`. Read this reference before implementing
+any `/add-*` connector operation.
 
----
+Resolve connections only in the approved implementation phase, before adding
+the data source.
+Reuse a supplied connection ID or reference for the confirmed connector/environment;
+invoke `/list-connections` only when lookup or creation is needed.
+Do not invoke it during planning, `--plan-only`, cancellation, or removal-only work.
+Approved data child calls reuse their scoped handoff without repeating
+approval. Direct operational `/list-connections` requests keep their own workflow;
+they do not authorize unrelated app changes.
 
 ## Safety Guardrails
 
@@ -190,14 +247,14 @@ All non-Dataverse connectors require a connection ID or connection reference bef
 
 Plugin-level hooks also run during unrelated plugin workflows, so every mutating mobile skill owns its validation:
 
-1. Track changed files by writer: the skill/subagents and preparation helpers versus trusted generators. Use a helper's returned `writtenFiles` when available; track removals separately, not as files to validate. Output from `pa app init` or `pa app add data-source` is excluded only when produced by that command and not modified afterward by the skill or its subagents. Newly generated does not mean manually written.
+1. Track changed files by writer: the skill/subagents and preparation helpers versus trusted generators. Use a helper's returned `writtenFiles` when available; track removals separately, not as files to validate. CLI-owned output means output actually produced by `pa app init`, `pa app add data-source`, `pa app refresh data-source`, or `pa app remove data-source` through the resolved `$PA` command. It is excluded only when produced by that command and not modified afterward by the skill or its subagents. Newly generated does not mean manually written.
 2. Before returning success, pass each existing skill/helper-owned changed file explicitly:
 
    ```bash
    node "${PLUGIN_ROOT}/scripts/validate-mobile-files.js" \
-     --project-root "<working_dir>" \
-     --file "<changed-file-1>" \
-     --file "<changed-file-2>"
+     --project-root '<working_dir>' \
+     --file '<changed-file-1>' \
+     --file '<changed-file-2>'
    ```
 
 3. On exit `2`, repair every finding and rerun. Exit `0` is required before `DONE`.
@@ -275,21 +332,25 @@ The CLI ships two binaries — grouped `pa` (preferred) and flat `power-apps` (f
 
 Use the resolved `$PA` for Power Apps CLI commands, and direct `node` and `az` commands for the rest of the mobile-app plugin flow.
 
-Typical commands:
+Use [cli-binary.md](cli-binary.md) for command/flag translation and the owning
+skill for its approved operation. Do not duplicate the resolver or maintain a
+second command catalog here. Do not substitute a global binary or fetch another
+CLI to bypass a failure. Refresh/removal scope and postconditions are in
+[data-source-removal.md](references/data-source-removal.md).
 
-```bash
-$PA app init -t MobileApp --display-name '<name>' --environment-id <id> --non-interactive
-$PA app add data-source --connector <api> --connection-id <connection-id>
-$PA connection create --connector <api> --json
-$PA connection list-references --solution-id <solution-id> --json
-node scripts/resolve-environment.js [environment-id-or-url]
-```
+`npm run generate-schemas` is the separate template command that rebuilds
+`src/generated/connectorSchemas.ts`; it does not add/remove registrations or
+regenerate all model/service files. `npx --no-install tsc --noEmit` validates types; it is
+not a generator.
 
 **Power Apps CLI required-argument rule:** when a skill invokes `$PA`, pass every value the skill already knows and run app-root verbs from the directory that contains `power.config.json`. In practice:
 
 - `app init` and pre-project discovery commands can use `--environment-id` because there is no `power.config.json` yet.
-- After `power.config.json` exists, do **not** pass `--environment-id` to app-root verbs (`app add data-source`, `app push`, `connection list-datasets`, `connection list-tables`, `connection list-references`, `app add flow`, `app remove flow`, etc.). The CLI reads the environment and region from `power.config.json`; extra unregistered flags can fail command parsing.
-- Use `--non-interactive` only on commands whose required values are completely supplied and whose implementation supports non-interactive execution (`app init`, `app push`, `app add flow --flow-id`, `app remove flow --flow-id --force`, `connection create --connector` for SSO-eligible connectors, `app remove data-source --connector --name --force`). Grouped `pa` refuses a non-interactive removal without `--force`, so pass it only when the user asked for the removal. For `app add data-source`, prefer passing the connector-specific required flags and let the action layer request only the options it needs.
+- After `power.config.json` exists, do **not** pass `--environment-id` to app-root verbs (`app add data-source`, `app push`, `connection list-datasets`, `connection list-tables`, `connection list-references`, etc.). The CLI reads the environment and region from `power.config.json`; extra unregistered flags can fail command parsing.
+- Use `--non-interactive` only on commands whose required values are completely supplied and whose implementation supports non-interactive execution (`app init`, `app push`, `connection create --connector` for SSO-eligible connectors, `app remove data-source --connector --name --force`). Grouped `pa` refuses a non-interactive removal without `--force`, so pass it only when the user asked for the removal. For `app add data-source`, prefer passing the connector-specific required flags and let the action layer request only the options it needs.
+- Follow
+  [data-source-removal.md](references/data-source-removal.md), including verification
+  of the actual configuration/schemas/generated output even when the command exits 0.
 - Prefer `--json` on list/discovery commands so downstream parsing is stable.
 - For Dataverse table generation, pass `--connector dataverse`, `--table <table-logical-name>`, and `--org-url <environment-url>`.
 - For non-Dataverse connectors, pass `--connector`, plus either `--connection-id` from `connection create` or `--connection-ref` from `connection list-references`; table-based connectors also need `--dataset` and `--table`.
@@ -306,7 +367,14 @@ node scripts/resolve-environment.js [environment-id-or-url]
 
 In non-interactive mode (`--non-interactive` or CI), `auth switch` requires `--account <email>` when more than one account is cached; it will fail with an error listing the cached accounts if omitted.
 
-**Failure refresh policy (global):** if any `$PA` command exits non-zero, run `$PA auth status --json` to confirm the active account is correct. If the account needs to change, use `$PA auth switch`; if no account is cached, use `$PA auth login`. Only run `$PA auth logout` when the cache itself is corrupt or you want to remove all accounts. After correcting auth state, retry the same command once before further triage.
+**Failure refresh policy (global):** distinguish unknown-command/unknown-option
+failures from authentication failures. If the command is unsupported, report
+the error; do not guess aliases, strip safety flags, or install another CLI to
+conceal it. For an auth
+failure, run `$PA auth status --json` to confirm the active
+account. Use `$PA auth switch` or `$PA auth login` only when needed; `$PA auth logout` remains a last
+resort for a corrupt cache or explicitly requested sign-out. After correcting
+auth state, retry the same supported command once before further triage.
 
 `az` calls work in bash on macOS/Linux directly. On Windows, wrap with `pwsh -NoProfile -Command "az …"` for consistency.
 
@@ -317,6 +385,9 @@ In non-interactive mode (`--non-interactive` or CI), `auth switch` requires `--a
 Apply these rules whenever an `az`, `npm`, `npx`, or `expo` command exits non-zero. Do NOT retry silently or proceed past a failure.
 
 ### `$PA` (Power Apps CLI) failures (all commands)
+
+Unsupported command/option errors follow the failure policy above, not an auth
+retry. For authentication failures:
 
 1. Run `$PA auth status --json` to verify the active account.
 2. If the wrong account is active and the right one is cached, run `$PA auth switch --account <email>`.
@@ -372,13 +443,24 @@ When a skill is invoked from another skill (e.g., `/create-mobile-app` calls `/a
 ## Execution Style
 
 - Do not announce steps before executing them. Proceed directly through the workflow.
-- Do not ask for permission to do read-only operations (Glob, Grep, Read, `node scripts/resolve-environment.js <environment-id-or-url>`).
+- Within the current approved phase, do not ask separately for read-only operations
+  (Glob, Grep, Read, `node scripts/resolve-environment.js <environment-id-or-url>`).
+  This does not authorize mutation or discovery outside the current data scope.
 - For multi-step operations, use `manage_todo_list` to give the user visibility.
 - After completing each step, update the memory bank — don't batch updates at the end.
 
 ### When to use `AskUserQuestion` — and when NOT to
 
-The user shouldn't have to read a question whose answer is mechanical. Each prompt costs a context switch. Apply this filter before calling `AskUserQuestion`:
+**Explicit approval gates take precedence** over the efficiency rules below:
+plan/mutation, data-source removal, and deployment gates require
+the user's explicit selection or approval. A recommended option, one viable
+path, stored preference, or deterministic recovery is not consent. Reuse approval
+only for the same current operation: already-approved scoped child calls do not repeat approvals,
+but expanded scope returns to the owner for a new decision.
+
+The user shouldn't have to read a question whose answer is mechanical. Apply this
+filter only to read-only work allowed in the current phase or decisions within
+an already-approved scope, never to skip a required approval gate:
 
 | Situation | Action |
 |---|---|
@@ -386,10 +468,13 @@ The user shouldn't have to read a question whose answer is mechanical. Each prom
 | Auto-recoverable failure with a deterministic fix (e.g. probe alt names, retry with backoff, fall back to default) | **Auto-recover.** Surface only if recovery itself fails. |
 | Detectable state (e.g. "is Metro running?") | **Probe first.** Use the available tool (MCP, file check, command) and only ask if the probe is inconclusive. |
 | Display preference repeated across runs (e.g. "open in browser?") | **Use the persisted flag** (`memory-bank.md`, project config). Don't re-ask each time. |
-| One option is tagged `(Recommended)` AND alternatives are clearly worse | **Default to the recommended option** without prompting. If you must prompt (e.g. options have different costs), make the recommended option the default so an empty answer proceeds. |
+| One option is tagged `(Recommended)` AND alternatives are clearly worse | Explain the recommendation. If a decision requires consent or has different costs/scope, ask and wait for an explicit selection; the label does not approve it. |
 | Genuinely ambiguous (multiple valid paths with real trade-offs the user must weigh) | **Ask.** This is the legitimate case. |
 
-The "Recommended (default-yes)" pattern: when you do call `AskUserQuestion`, structure the options so an empty/cancel answer auto-proceeds with the safe default — never block on a prompt the user can ignore.
+Cancellation or dismissal stops the pending operation without further work.
+An empty or ambiguous answer requires clarification or waiting; never convert
+it into approval or proceed with a recommended default. Preserve existing work
+and do not interpret stopping as permission to roll it back.
 
 ---
 
